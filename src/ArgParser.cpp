@@ -1,13 +1,13 @@
-#include "../include/ArgParser.h"
+#include <ArgParser.h>
 
 #include <iostream>
 #include <filesystem>
 
-const char* ArgParser::getInputFilePath() {
+std::string_view ArgParser::getInputFilePath() {
 	return m_inputFilePath;
 }
 
-const char* ArgParser::getOutputPath() {
+std::string_view ArgParser::getOutputPath() {
 	return m_outputFilePath;
 }
 

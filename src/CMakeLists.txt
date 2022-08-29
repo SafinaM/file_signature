@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Threads REQUIRED)
 
-set(SOURCES ProduceConsumer.cpp Hasher.cpp ArgParser.cpp FileReader.cpp FileWriter.cpp main.cpp )
+set(SOURCES ChunkProcessor.cpp Hasher.cpp ArgParser.cpp FileReader.cpp FileWriter.cpp main.cpp )
 
 add_executable(file_signature ${SOURCES})
 

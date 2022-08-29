@@ -1,7 +1,7 @@
 #include <ArgParser.h>
 #include <FileReader.h>
 #include <FileWriter.h>
-#include <ProduceConsumer.h>
+#include <ChunkProcessor.h>
 
 #include <iostream>
 
@@ -20,21 +20,19 @@ int main(int argc, char** argv) {
 			++maxNumberOfElements;
 
 		std::unique_ptr<FileReader> fileReader = std::unique_ptr<FileReader>(
-			new FileReader(
-			argParser.getInputFilePath(),
-			argParser.getInputFileSize()));
+			new FileReader(argParser.getInputFilePath()));
 
-		if (fileReader && !fileReader->isValid()) {
+		if (!fileReader) {
 			return -1;
 		}
 
 		std::unique_ptr<FileWriter> fileWriter = std::unique_ptr<FileWriter>(new FileWriter(argParser.getOutputPath()));
 
-		if (fileWriter && !fileWriter->isValid()) {
+		if (!fileWriter) {
 			return -1;
 		}
 
-		ProduceConsumer produceConsumer = ProduceConsumer(
+		ChunkProcessor produceConsumer = ChunkProcessor(
 			maxNumberOfElements,
 			std::move(fileReader),
 			std::move(fileWriter),

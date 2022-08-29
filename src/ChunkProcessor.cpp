@@ -1,16 +1,16 @@
-#include <ProduceConsumer.h>
+#include <ChunkProcessor.h>
 #include <Hasher.h>
 
 #include <iostream>
 
-inline uint64_t ProduceConsumer::getCurrentChunkSize() {
+inline uint64_t ChunkProcessor::getCurrentChunkSize() {
 	if ((m_currentRead + 1) * m_chunkSize < m_fileSize)
 		return m_chunkSize;
 	else
 		return m_fileSize % m_chunkSize;
 }
 
-void ProduceConsumer::extractReadyHashes() {
+void ChunkProcessor::extractReadyHashes() {
 	auto it = std::find_if(m_futureHashList.begin(), m_futureHashList.end(), [](const auto& it) {
 		return it.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready; }
 	);
@@ -22,12 +22,12 @@ void ProduceConsumer::extractReadyHashes() {
 	}
 }
 
-std::shared_ptr<char[]> ProduceConsumer::readDataOfChunkSize() {
+std::shared_ptr<char[]> ChunkProcessor::readDataOfChunkSize() {
 	return m_fileReader->read(getCurrentChunkSize());
 }
 
 // collecting hashes from threadpool here
-void ProduceConsumer::checkResults() {
+void ChunkProcessor::checkResults() {
 	try {
 		while (m_currentWritten.load() < m_maxId.load()) {
 			std::lock_guard<std::mutex> lk(m_mutex);
@@ -45,16 +45,17 @@ void ProduceConsumer::checkResults() {
 	}
 }
 
-void ProduceConsumer::produceData() {
+void ChunkProcessor::produceData() {
 	try {
 		while(m_currentRead.load() < m_maxId.load()) {
 			const auto data = readDataOfChunkSize();
 			if (!data) {
 				std::cerr << "Invalid data, please check FileReader" << std::endl;
-				throw std::runtime_error("\nProduceConsumer::produceData: nullptr was returned! Please check the size of a file and chunkSize!");
+				throw std::runtime_error(
+					"\nChunkProcessor::produceData: nullptr was returned! "
+					"Please check the size of a file and chunkSize!");
 			}
 			{
-				std::lock_guard<std::mutex> lk(m_mutex);
 				auto future = m_threadPool.submit(
 					Hasher::jenkinsOneAtATimeHash,
 					data,
@@ -63,28 +64,26 @@ void ProduceConsumer::produceData() {
 				m_currentRead.fetch_add(1);
 				m_futureHashList.emplace_back(std::move(future));
 			}
-
 			m_conditionalVariable.notify_all();
 		}
 	} catch(const std::exception& exception) {
-		std::cerr << "ProduceConsumer::produceData: throws an exception, id: "
+		std::cerr << "ChunkProcessor::produceData: throws an exception, id: "
 				  << std::this_thread::get_id()
 				  << exception.what() << std::endl;
 		exit(-1);
 	} catch(...) {
-		std::cerr << "ProduceConsumer::produceData: Unknown failure occurred. Possible memory corruption!" << std::endl;
+		std::cerr << "ChunkProcessor::produceData: Unknown failure occurred. Possible memory corruption!" << std::endl;
 		exit(-1);
 	}
-
 }
 
-void ProduceConsumer::consumeData() {
+void ChunkProcessor::consumeData() {
 	try {
 		while (m_currentWritten.load() < m_maxId.load()) {
 			std::unique_lock lk(m_mutex);
 			m_conditionalVariable.wait(lk,[this] {return !m_prioritizedHashes.empty();});
 			Data data = m_prioritizedHashes.top();
-			// additional checking to keep an order, theoratically it is possible,
+			// additional checking to keep an order, theoretically it is possible,
 			// note that id of a data chunk should be equal to number of already written chunks
 			if (data.first != m_currentWritten) {
 				std::cout << "was skipped, wait " << data.first << std::endl;
@@ -92,6 +91,7 @@ void ProduceConsumer::consumeData() {
 			}
 			m_prioritizedHashes.pop();
 			lk.unlock();
+
 			writeHash(data);
 			m_currentWritten.fetch_add(1);
 		}
@@ -106,14 +106,12 @@ void ProduceConsumer::consumeData() {
 	}
 }
 
-void ProduceConsumer::writeHash(const Data& data) {
+void ChunkProcessor::writeHash(const Data& data) {
 	m_fileWriter->write(data.second);
-	std::cout << "hash = " << data.first << "  " << data.second << std::endl;
-	std::cout << "m_currentRead = " << m_currentRead << std::endl;
-	std::cout << "m_currentWritten = " << m_currentWritten << std::endl;
+	std::cout << "it = " << data.first << ", hash  " << data.second << std::endl;
 }
 
-ProduceConsumer::ProduceConsumer(
+ChunkProcessor::ChunkProcessor(
 	uint64_t numberOfChunks,
 	std::unique_ptr<FileReader> fileReader,
 	std::unique_ptr<FileWriter> fileWriter,
@@ -126,26 +124,19 @@ ProduceConsumer::ProduceConsumer(
 		m_chunkSize(chunkSize)
 		{}
 
-void ProduceConsumer::run() {
-	m_producingDataFuture = std::async(std::launch::async, &ProduceConsumer::produceData, this);
-	m_consumingDataFuture = std::async(std::launch::async, &ProduceConsumer::consumeData, this);
-	m_checkingResultsFuture = std::async(std::launch::async, &ProduceConsumer::checkResults, this);
+void ChunkProcessor::run() {
+	m_producingDataFuture = std::async(std::launch::async, &ChunkProcessor::produceData, this);
+	m_consumingDataFuture = std::async(std::launch::async, &ChunkProcessor::consumeData, this);
+	m_checkingResultsFuture = std::async(std::launch::async, &ChunkProcessor::checkResults, this);
 }
 
-// yes a little bit ugly,
-void ProduceConsumer::tryToStop() {
+void ChunkProcessor::tryToStop() {
 
-	if (m_producingDataFuture.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready) {
-		m_producingDataFuture.get();
-	}
-	if (m_consumingDataFuture.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready) {
-		m_consumingDataFuture.get();
-	}
-	if (m_checkingResultsFuture.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready) {
-		m_checkingResultsFuture.get();
-	}
+	m_producingDataFuture.get();
+	m_consumingDataFuture.get();
+	m_checkingResultsFuture.get();
 }
 
-ProduceConsumer::~ProduceConsumer() {
+ChunkProcessor::~ChunkProcessor() {
 	tryToStop();
 }

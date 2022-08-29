@@ -8,9 +8,9 @@
 
 #pragma once
 
-struct ProduceConsumer {
+struct ChunkProcessor {
 
-	ProduceConsumer(
+	ChunkProcessor(
 		uint64_t numberOfChunks,
 		std::unique_ptr<FileReader> fileReader,
 		std::unique_ptr<FileWriter> fileWriter,
@@ -21,9 +21,14 @@ struct ProduceConsumer {
 
 	void tryToStop();
 
-	~ProduceConsumer();
+	~ChunkProcessor();
 
+// first - id, second - hash
 using Data = std::pair<uint64_t, uint64_t>;
+using priority_queue = std::priority_queue<
+		Data,
+		std::deque<Data>,
+		std::greater<Data>>;
 
 private:
 
@@ -31,10 +36,7 @@ private:
 
 	std::mutex m_mutex;
 	std::condition_variable m_conditionalVariable;
-	std::priority_queue<
-		Data,
-		std::deque<Data>,
-		std::greater<Data>> m_prioritizedHashes;
+	priority_queue m_prioritizedHashes;
 
 	std::list<std::future<Data>> m_futureHashList;
 

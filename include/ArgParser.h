@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <string_view>
 
 #pragma once
 
@@ -6,9 +7,9 @@ struct ArgParser {
 
 	ArgParser() = default;
 
-	const char* getInputFilePath();
+	std::string_view getInputFilePath();
 
-	const char* getOutputPath();
+	std::string_view getOutputPath();
 
 	uint64_t getChunkSize();
 
@@ -17,8 +18,8 @@ struct ArgParser {
 	bool parse(int arc, char** argv);
 
 private:
-	const char* m_inputFilePath;
-	const char* m_outputFilePath;
+	std::string_view m_inputFilePath;
+	std::string_view m_outputFilePath;
 	uint64_t m_chunkSize;
 	uint64_t m_fileSize;
 

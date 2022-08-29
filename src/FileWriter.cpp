@@ -3,20 +3,15 @@
 #include <iostream>
 
 
-FileWriter::FileWriter(const char* outputFilePath) :
+FileWriter::FileWriter(std::string_view outputFilePath) :
 	m_outputFilePath(outputFilePath) {
 
 	m_ofstream.open(m_outputFilePath, std::ios::out | std::ios::trunc);
 	if (!m_ofstream) {
 		std::cerr << "file: " << m_outputFilePath << " not found" << std::endl;
-		m_validated = false;
-		return;
-	}
-	m_validated = true;
-}
+		throw std::runtime_error("Fstream was not opened!");
 
-bool FileWriter::isValid() {
-	return m_validated;
+	}
 }
 
 void FileWriter::write(uint64_t hash) {
@@ -26,8 +21,3 @@ void FileWriter::write(uint64_t hash) {
 	}
 	m_ofstream << hash << std::endl; // human friendly view
 }
-
-FileWriter::~FileWriter() {
-	m_ofstream.close();
-}
-

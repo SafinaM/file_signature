@@ -1,13 +1,13 @@
 #include <fstream>
 #include <memory>
-#include <mutex>
 
 #pragma once
 
 // not thread safe
 struct FileReader {
 
-	FileReader(const char*, uint64_t size);
+	FileReader(std::string_view inputFilePath);
+	~FileReader() = default;
 
 	std::shared_ptr<char[]> read(uint64_t chunkSize);
 
@@ -15,7 +15,6 @@ struct FileReader {
 
 private:
 	std::ifstream m_ifstream;
-	const char* m_inputFilePath;
-	bool m_validated;
+	std::string m_inputFilePath;
 
 };
