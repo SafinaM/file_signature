@@ -19,15 +19,24 @@ uint64_t ArgParser::getInputFileSize() {
 	return m_fileSize;
 }
 
+namespace {
+	void printHelp() {
+		std::cerr << "Example of using: ./file_signature <path to input file> <file to output file> <chunkSize in MB>" << std::endl;
+		std::cerr << "./file_signature bigfile.zip output.txt 1" << std::endl;
+	}
+}
+
 bool ArgParser::parse(int argc, char** argv)  {
 
-	if (argc != 4)
+	if (argc != 4) {
+		printHelp();
 		return false;
+	}
 
 	m_inputFilePath = argv[1];
 	m_outputFilePath = argv[2];
 
-	// check size a file to set correct chunksize
+	// check size of a file to set correct chunksize
 	m_fileSize = std::filesystem::file_size(m_inputFilePath);
 	if (!m_fileSize) {
 		std::cout << "file " << m_inputFilePath << " is not found!" << std::endl;
@@ -35,7 +44,7 @@ bool ArgParser::parse(int argc, char** argv)  {
 	}
 
 	m_chunkSize = std::stoll(argv[3]);
-	m_chunkSize *= 1024l * 1024l;
+	m_chunkSize *= 1024l * 1024l; // 1 MB
 
 	if (!m_chunkSize) {
 		m_chunkSize = 1024l * 1024l; // 1MB

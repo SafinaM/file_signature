@@ -21,6 +21,7 @@ bool FileWriter::isValid() {
 
 void FileWriter::write(uint64_t hash) {
 	if (!m_ofstream) {
+		std::cerr << "FileWriter: Something was wrong!" << std::endl;
 		return;
 	}
 	m_ofstream << hash << std::endl; // human friendly view

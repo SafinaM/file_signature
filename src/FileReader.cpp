@@ -22,6 +22,7 @@ bool FileReader::isValid() {
 }
 
 std::shared_ptr<char[]> FileReader::read(uint64_t chunkSize) {
+
 	std::shared_ptr<char[]> chunkBuffer(new char[chunkSize]);
 
 	m_ifstream.read(chunkBuffer.get(), chunkSize);

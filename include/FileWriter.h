@@ -1,6 +1,7 @@
 #include <fstream>
 #include <mutex>
 
+#pragma once
 
 // not thread safe
 struct FileWriter{
