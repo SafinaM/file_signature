@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
 			++maxNumberOfElements;
 
 		std::unique_ptr<FileReader> fileReader = std::unique_ptr<FileReader>(
-			new FileReader(argParser.getInputFilePath()));
+			new FileReader(argParser.getInputFilePath(), argParser.getInputFileSize()));
 
 		if (!fileReader) {
 			return -1;

@@ -3,8 +3,9 @@
 
 #include <iostream>
 
+// yes it could be in FileReader, but I also need file size for Hash calculating, that it why it here
 inline uint64_t ChunkProcessor::getCurrentChunkSize() {
-	if ((m_currentRead + 1) * m_chunkSize < m_fileSize)
+	if ((m_currentRead + 1) * m_chunkSize <= m_fileSize)
 		return m_chunkSize;
 	else
 		return m_fileSize % m_chunkSize;
@@ -55,15 +56,18 @@ void ChunkProcessor::produceData() {
 					"\nChunkProcessor::produceData: nullptr was returned! "
 					"Please check the size of a file and chunkSize!");
 			}
-			{
-				auto future = m_threadPool.submit(
-					Hasher::jenkinsOneAtATimeHash,
+			auto future = m_threadPool.submit(
+				Hasher::jenkinsOneAtATimeHash,
 					data,
 					getCurrentChunkSize(),
 					m_currentRead.load());
-				m_currentRead.fetch_add(1);
+
+					m_currentRead.fetch_add(1);
+			{
+				std::lock_guard lockGuard(m_mutex); // I could not catch UB here without this mutex...
 				m_futureHashList.emplace_back(std::move(future));
 			}
+
 			m_conditionalVariable.notify_all();
 		}
 	} catch(const std::exception& exception) {
@@ -83,15 +87,16 @@ void ChunkProcessor::consumeData() {
 			std::unique_lock lk(m_mutex);
 			m_conditionalVariable.wait(lk,[this] {return !m_prioritizedHashes.empty();});
 			Data data = m_prioritizedHashes.top();
-			// additional checking to keep an order, theoretically it is possible,
+			// additional checking to keep an order, theoretically it is possible, especially in a case of big chunkSize ~ 100 MB
 			// note that id of a data chunk should be equal to number of already written chunks
+			// as a variant to use seekp, but now let's keep your hard disk alive
 			if (data.first != m_currentWritten) {
-				std::cout << "was skipped, wait " << data.first << std::endl;
+				std::cout << "we are waiting element number " << m_currentWritten << std::endl;
+				std::this_thread::yield;
 				continue;
 			}
 			m_prioritizedHashes.pop();
 			lk.unlock();
-
 			writeHash(data);
 			m_currentWritten.fetch_add(1);
 		}
@@ -108,7 +113,7 @@ void ChunkProcessor::consumeData() {
 
 void ChunkProcessor::writeHash(const Data& data) {
 	m_fileWriter->write(data.second);
-	std::cout << "it = " << data.first << ", hash  " << data.second << std::endl;
+	std::cout << "id = " << data.first << ", hash = " << data.second << std::endl;
 }
 
 ChunkProcessor::ChunkProcessor(

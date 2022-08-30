@@ -5,10 +5,24 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Threads REQUIRED)
 
-set(SOURCES ChunkProcessor.cpp Hasher.cpp ArgParser.cpp FileReader.cpp FileWriter.cpp main.cpp )
+set(CMAKE_INSTALL_PREFIX install)
 
-add_executable(file_signature ${SOURCES})
+set(SOURCES ChunkProcessor.cpp Hasher.cpp ArgParser.cpp FileReader.cpp FileWriter.cpp)
 
-include_directories(../include)
+add_executable(file_signature ${SOURCES} main.cpp)
 
-target_link_libraries(file_signature Threads::Threads)
+include_directories(file_signature ../include)
+
+target_link_libraries(file_signature Threads::Threads FileSignature)
+
+if(WITH_TESTS)
+
+    add_library(FileSignature STATIC ${SOURCES})
+    add_subdirectory(tests)
+
+    install(DIRECTORY ../include DESTINATION include)
+    install(TARGETS FileSignature DESTINATION lib)
+
+endif()
+
+install(TARGETS file_signature DESTINATION bin)
