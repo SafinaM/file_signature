@@ -51,17 +51,17 @@ void ChunkProcessor::consumeData() {
 	try {
 		while (m_currentWritten.load() < m_maxId.load()) {
 
+			std::unique_lock lk(m_mutex);
+			m_conditionalVariable.wait(lk, [this] {return !m_futureHashList.empty() || !m_prioritizedHashes.empty();});
+
 			auto it = std::find_if(m_futureHashList.begin(), m_futureHashList.end(), [](const auto &it) {
 				return it.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready;
-			}
-			);
-			std::unique_lock lk(m_mutex);
+			});
+
 			if (it != m_futureHashList.end()){
 				m_prioritizedHashes.push(it->get());
 				m_futureHashList.erase(it);
 			}
-
-			m_conditionalVariable.wait(lk, [this] {return !m_futureHashList.empty() || !m_prioritizedHashes.empty();});
 
 			// additional checking to keep an order, theoretically it is possible, especially in a case of big chunkSize ~ 100 MB
 			// note that id of a data chunk should be equal to number of already written chunks
