@@ -11,7 +11,7 @@ set(SOURCES ChunkProcessor.cpp Hasher.cpp ArgParser.cpp FileReader.cpp FileWrite
 
 add_executable(file_signature ${SOURCES} main.cpp)
 
-include_directories(file_signature ../include)
+include_directories(../include)
 
 target_link_libraries(file_signature Threads::Threads)
 
