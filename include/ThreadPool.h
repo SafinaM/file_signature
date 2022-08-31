@@ -54,7 +54,7 @@ private:
 
 public:
 	explicit ThreadPool(
-	size_t threadCount = std::thread::hardware_concurrency() - 4) // main thread + consume + produce + check results
+	size_t threadCount = std::thread::hardware_concurrency() - 3) // consume, produce, main
 	: _done{false}, _joiner{_threads} {
 		if (0u == threadCount) {
 			threadCount = 1u;

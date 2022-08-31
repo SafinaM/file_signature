@@ -47,7 +47,6 @@ private:
 
 	std::future<void> m_producingDataFuture;
 	std::future<void> m_consumingDataFuture;
-	std::future<void> m_checkingResultsFuture;
 
 	std::atomic<uint64_t> m_currentRead{0};
 	std::atomic<uint64_t> m_currentWritten{0};
@@ -58,9 +57,6 @@ private:
 	void extractReadyHashes();
 
 	std::shared_ptr<char[]> readDataOfChunkSize();
-
-	// collecting hashes from threadpool here
-	void checkResults();
 
 	void produceData();
 

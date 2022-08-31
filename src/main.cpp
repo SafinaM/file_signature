@@ -6,6 +6,7 @@
 #include <iostream>
 
 int main(int argc, char** argv) {
+	std::cout << "Processing..." << std::endl;
 
 	try {
 		ArgParser argParser;
@@ -21,13 +22,11 @@ int main(int argc, char** argv) {
 
 		std::unique_ptr<FileReader> fileReader = std::unique_ptr<FileReader>(
 			new FileReader(argParser.getInputFilePath(), argParser.getInputFileSize()));
-
 		if (!fileReader) {
 			return -1;
 		}
 
 		std::unique_ptr<FileWriter> fileWriter = std::unique_ptr<FileWriter>(new FileWriter(argParser.getOutputPath()));
-
 		if (!fileWriter) {
 			return -1;
 		}
@@ -46,6 +45,8 @@ int main(int argc, char** argv) {
 	} catch (...) {
 		std::cerr << "Unknown failure occurred. Possible memory corruption!" << std::endl;
 	}
+
+	std::cout << "Success!" << std::endl;
 
 	return 0;
 }
