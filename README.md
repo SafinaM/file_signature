@@ -52,7 +52,7 @@ cd install/bin
 ./test # randomFile is provided in installation directory
 ```
 
-Debug outpue will be switched of:
+Debug outpue will be switched on:
 ```
 id = 0, hash = 4816188159313654
 id = 1, hash = 7375261180985723587
