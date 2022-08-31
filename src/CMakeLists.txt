@@ -13,7 +13,7 @@ add_executable(file_signature ${SOURCES} main.cpp)
 
 include_directories(file_signature ../include)
 
-target_link_libraries(file_signature Threads::Threads FileSignature)
+target_link_libraries(file_signature Threads::Threads)
 
 if(WITH_TESTS)
 
