@@ -1,4 +1,4 @@
-Here presented code to create of file's signature using multi-threading
+Here is the code for creating a file signature using multithreading.
 
 It is required to write utilite with C++ for generating of file signature.
 
