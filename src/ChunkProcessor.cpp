@@ -90,7 +90,7 @@ void ChunkProcessor::consumeData() {
 
 void ChunkProcessor::writeHash(const Data& data) {
 	m_fileWriter->write(data.second);
-	std::cout << "id = " << data.first << ", hash = " << data.second << std::endl;
+	// std::cout << "id = " << data.first << ", hash = " << data.second << std::endl;
 }
 
 ChunkProcessor::ChunkProcessor(

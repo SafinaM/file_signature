@@ -90,3 +90,23 @@ id = 0, hash = 4392418993377932163
 
 Success!
 ```
+
+Benchmarks with hyperfine, 1 GB file, 1 launch with chunkSize = 1 MB, 
+```
+hyperfine -r 30 --export-markdown md.md './file_signature file.bin output.txt 100'
+```
+
+| Command | Mean [s] | Min [s] | Max [s] | Relative |
+|:---|---:|---:|---:|---:|
+| `./file_signature file.bin output.txt 1` | 2.487 ± 0.121 | 2.249 | 2.714 | 1.00 |
+| `./file_signature_one_thread file.bin output.txt 1` | 6.099 ± 0.368 | 5.745 | 7.139 | 1.00 |
+
+the second with chunkSize = 100 MB
+
+| Command | Mean [s] | Min [s] | Max [s] | Relative |
+|:---|---:|---:|---:|---:|
+| `./file_signature file.bin output.txt 100` | 3.399 ± 0.141 | 3.085 | 3.658 | 1.00 |
+| `./file_signature file.bin output.txt 100` | 6.992 ± 0.248 | 6.427 | 7.331 | 1.00 |
+
+For chunkSize = 1MB, the multi-threaded implementation was 2.5 times faster than the single-threaded one.
+For chunkSize = 100MB multi-threaded implementation was 2.1 times faster than single-threaded.
