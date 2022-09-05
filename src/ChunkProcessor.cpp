@@ -17,7 +17,7 @@ std::shared_ptr<char[]> ChunkProcessor::readDataOfChunkSize() {
 
 void ChunkProcessor::produceData() {
 	try {
-		while(m_currentRead.load() < m_maxId.load()) {
+		while(m_currentRead.load() < m_maxId.load() || done) {
 			std::shared_ptr<char[]> data = readDataOfChunkSize();
 			if (!data) {
 				std::cerr << "Invalid data, please check FileReader" << std::endl;
@@ -40,23 +40,42 @@ void ChunkProcessor::produceData() {
 		std::cerr << "ChunkProcessor::produceData: throws an exception, id: "
 				<< std::this_thread::get_id()
 				<< exception.what() << std::endl;
-		exit(-1);
+		done = true;
+		m_conditionalVariable.notify_all();
+		throw;
+
 	} catch(...) {
 		std::cerr << "ChunkProcessor::produceData: Unknown failure occurred. Possible memory corruption!" << std::endl;
-		exit(-1);
+		done = true;
+		m_conditionalVariable.notify_all();
+		throw;
 	}
 }
 
 void ChunkProcessor::consumeData() {
 	try {
-		while (m_currentWritten.load() < m_maxId.load()) {
+		while (m_currentWritten.load() < m_maxId.load() || done) {
 
 			std::unique_lock lk(m_mutex);
-			m_conditionalVariable.wait(lk, [this] {return !m_futureHashList.empty() || !m_prioritizedHashes.empty();});
+			m_conditionalVariable.wait(lk, [this] {return !m_futureHashList.empty() || !m_prioritizedHashes.empty() || done;});
+
+			if (done)
+				return;
+
+//			auto it = std::partition(m_futureHashList.begin(), m_futureHashList.end(), [](const auto &it) {
+//				return it.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready;
+//			});
 
 			auto it = std::find_if(m_futureHashList.begin(), m_futureHashList.end(), [](const auto &it) {
 				return it.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready;
 			});
+
+//			for (; it != m_futureHashList.end();) {
+//				m_prioritizedHashes.push(it->get());
+//				it = m_futureHashList.erase(it);
+//			}
+//			lk.unlock();
+
 
 			if (it != m_futureHashList.end()){
 				m_prioritizedHashes.push(it->get());
@@ -72,7 +91,6 @@ void ChunkProcessor::consumeData() {
 			}
 			Data data = m_prioritizedHashes.top();
 			m_prioritizedHashes.pop();
-			lk.unlock();
 			writeHash(data);
 
 			m_currentWritten.fetch_add(1);
@@ -81,16 +99,20 @@ void ChunkProcessor::consumeData() {
 		std::cerr << "consumeData throws an exception, id: "
 				  << std::this_thread::get_id()
 				  << exception.what() << std::endl;
-		exit(-1);
+		done = true;
+		m_conditionalVariable.notify_all();
+		throw;
 	} catch(...) {
 		std::cerr << "consumeData: Unknown failure occurred. Possible memory corruption!" << std::endl;
-		exit(-1);
+		done = true;
+		m_conditionalVariable.notify_all();
+		throw;
 	}
 }
 
 void ChunkProcessor::writeHash(const Data& data) {
 	m_fileWriter->write(data.second);
-	// std::cout << "id = " << data.first << ", hash = " << data.second << std::endl;
+//	 std::cout << "id = " << data.first << ", hash = " << data.second << std::endl;
 }
 
 ChunkProcessor::ChunkProcessor(
@@ -104,11 +126,14 @@ ChunkProcessor::ChunkProcessor(
 		m_fileWriter(std::move(fileWriter)),
 		m_fileSize(size),
 		m_chunkSize(chunkSize)
-		{}
+		{
+//			m_futureHashList.reserve(m_maxId);
+		}
 
 void ChunkProcessor::run() {
 	m_producingDataFuture = std::async(std::launch::async, &ChunkProcessor::produceData, this);
 	m_consumingDataFuture = std::async(std::launch::async, &ChunkProcessor::consumeData, this);
+	tryToStop();
 }
 
 void ChunkProcessor::tryToStop() {
@@ -118,5 +143,5 @@ void ChunkProcessor::tryToStop() {
 }
 
 ChunkProcessor::~ChunkProcessor() {
-	tryToStop();
+	done = true;
 }

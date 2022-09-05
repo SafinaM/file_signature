@@ -51,6 +51,7 @@ private:
 	std::atomic<uint64_t> m_currentRead{0};
 	std::atomic<uint64_t> m_currentWritten{0};
 	std::atomic<uint64_t> m_maxId;
+	std::atomic<bool> done{false};
 	uint64_t m_chunkSize;
 	uint64_t m_fileSize;
 

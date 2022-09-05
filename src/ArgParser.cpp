@@ -28,7 +28,7 @@ namespace {
 
 bool ArgParser::parse(int argc, char** argv)  {
 
-	if (argc != 4) {
+	if (argc != 3 && argc != 4) {
 		printHelp();
 		return false;
 	}
@@ -43,11 +43,17 @@ bool ArgParser::parse(int argc, char** argv)  {
 		return false;
 	}
 
-	m_chunkSize = std::stoll(argv[3]);
-	m_chunkSize *= 1024l * 1024l; // 1 MB
+	const uint64_t defaultChunkSize = 1024l * 1024l; // 1 MB
+
+	m_chunkSize = defaultChunkSize;
+
+	if (argc == 3)
+		return true;
+
+	m_chunkSize *= std::stoll(argv[3]);
 
 	if (!m_chunkSize) {
-		m_chunkSize = 1024l * 1024l; // 1MB
+		m_chunkSize = defaultChunkSize; // 1MB
 		std::cerr << "chunkSize was taken as " << m_chunkSize << std::endl;
 	}
 
