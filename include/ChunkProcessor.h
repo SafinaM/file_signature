@@ -1,7 +1,8 @@
-#include <ThreadPool.h>
 #include <ArgParser.h>
 #include <FileReader.h>
 #include <FileWriter.h>
+#include <ThreadPool.h>
+#include <ThreadSafeQueue.h>
 
 #include <list>
 #include <memory>
@@ -25,6 +26,7 @@ struct ChunkProcessor {
 
 // first - id, second - hash
 using Data = std::pair<uint64_t, uint64_t>;
+
 using priority_queue = std::priority_queue<
 		Data,
 		std::deque<Data>,
@@ -35,10 +37,9 @@ private:
 	uint64_t getCurrentChunkSize();
 
 	std::mutex m_mutex;
-	std::condition_variable m_conditionalVariable;
 	priority_queue m_prioritizedHashes;
 
-	std::list<std::future<Data>> m_futureHashList;
+	threadsafe_queue<Data> m_hashesInThreadSafeQueue;
 
 	ThreadPool m_threadPool;
 
@@ -46,7 +47,7 @@ private:
 	std::unique_ptr<FileWriter> m_fileWriter;
 
 	std::future<void> m_producingDataFuture;
-	std::future<void> m_consumingDataFuture;
+	std::thread m_consumingThread;
 
 	std::atomic<uint64_t> m_currentRead{0};
 	std::atomic<uint64_t> m_currentWritten{0};

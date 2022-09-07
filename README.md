@@ -34,7 +34,7 @@ git clone -b master --recursive git@github.com:SafinaM/file_signature.git
 cd file_sinature
 mkdir build
 cd build
-cmake ../scc
+cmake ../src
 cmake --build . --config Release -- -j 4
 ./file_signature <input.file> <output.file> <chunkSize in MB>
 ```
@@ -52,7 +52,7 @@ cd install/bin
 ./test # randomFile is provided in installation directory
 ```
 
-Debug outpue will be switched on:
+Debug outpue will be switched off:
 ```
 id = 0, hash = 4816188159313654
 id = 1, hash = 7375261180985723587

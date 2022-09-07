@@ -16,70 +16,50 @@ std::shared_ptr<char[]> ChunkProcessor::readDataOfChunkSize() {
 }
 
 void ChunkProcessor::produceData() {
+
 	try {
 		while(m_currentRead.load() < m_maxId.load() || done) {
 			std::shared_ptr<char[]> data = readDataOfChunkSize();
 			if (!data) {
-				std::cerr << "Invalid data, please check FileReader" << std::endl;
 				throw std::runtime_error(
 					"\nChunkProcessor::produceData: nullptr was returned! "
 					"Please check the size of a file and chunkSize!");
 			}
+			uint64_t chunkSize = getCurrentChunkSize();
+			auto func = [this](std::shared_ptr<char[]> data, uint64_t chunkSize, uint64_t currentRead) {
+				auto hash = Hasher::jenkinsOneAtATimeHash(data, chunkSize, currentRead);
+				m_hashesInThreadSafeQueue.push(std::move(hash));
+			};
 
-			auto future = m_threadPool.submit(Hasher::jenkinsOneAtATimeHash, data, getCurrentChunkSize(), m_currentRead.load());
+			auto future = m_threadPool.submit(func, data, chunkSize, m_currentRead.load());
 			m_currentRead.fetch_add(1);
-
-			{
-				std::lock_guard lockGuard(m_mutex); // I could not catch UB here without this mutex...
-				m_futureHashList.emplace_back(std::move(future));
-			}
-
-			m_conditionalVariable.notify_all();
 		}
 	} catch(const std::exception& exception) {
-		std::cerr << "ChunkProcessor::produceData: throws an exception, id: "
-				<< std::this_thread::get_id()
-				<< exception.what() << std::endl;
 		done = true;
-		m_conditionalVariable.notify_all();
 		throw;
 
 	} catch(...) {
-		std::cerr << "ChunkProcessor::produceData: Unknown failure occurred. Possible memory corruption!" << std::endl;
 		done = true;
-		m_conditionalVariable.notify_all();
 		throw;
 	}
 }
 
 void ChunkProcessor::consumeData() {
+
 	try {
-		while (m_currentWritten.load() < m_maxId.load() || done) {
+		while (m_currentWritten.load() < m_maxId.load() && !done) {
 
-			std::unique_lock lk(m_mutex);
-			m_conditionalVariable.wait(lk, [this] {return !m_futureHashList.empty() || !m_prioritizedHashes.empty() || done;});
+			// if nothing to process let's reschedule our threads
+			if (m_hashesInThreadSafeQueue.empty() && m_prioritizedHashes.empty()) {
+				std::this_thread::yield;
+				continue;
+			}
 
-			if (done)
-				return;
-
-//			auto it = std::partition(m_futureHashList.begin(), m_futureHashList.end(), [](const auto &it) {
-//				return it.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready;
-//			});
-
-			auto it = std::find_if(m_futureHashList.begin(), m_futureHashList.end(), [](const auto &it) {
-				return it.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready;
-			});
-
-//			for (; it != m_futureHashList.end();) {
-//				m_prioritizedHashes.push(it->get());
-//				it = m_futureHashList.erase(it);
-//			}
-//			lk.unlock();
-
-
-			if (it != m_futureHashList.end()){
-				m_prioritizedHashes.push(it->get());
-				m_futureHashList.erase(it);
+			// take all processed hashes from thread safe queue
+			while (!m_hashesInThreadSafeQueue.empty()) {
+				auto elem = m_hashesInThreadSafeQueue.try_pop();
+				if (elem != nullptr)
+					m_prioritizedHashes.push(*elem);
 			}
 
 			// additional checking to keep an order, theoretically it is possible, especially in a case of big chunkSize ~ 100 MB
@@ -89,6 +69,7 @@ void ChunkProcessor::consumeData() {
 				std::this_thread::yield;
 				continue;
 			}
+
 			Data data = m_prioritizedHashes.top();
 			m_prioritizedHashes.pop();
 			writeHash(data);
@@ -96,21 +77,16 @@ void ChunkProcessor::consumeData() {
 			m_currentWritten.fetch_add(1);
 		}
 	}  catch(const std::exception& exception) {
-		std::cerr << "consumeData throws an exception, id: "
-				  << std::this_thread::get_id()
-				  << exception.what() << std::endl;
 		done = true;
-		m_conditionalVariable.notify_all();
 		throw;
 	} catch(...) {
-		std::cerr << "consumeData: Unknown failure occurred. Possible memory corruption!" << std::endl;
 		done = true;
-		m_conditionalVariable.notify_all();
 		throw;
 	}
 }
 
 void ChunkProcessor::writeHash(const Data& data) {
+
 	m_fileWriter->write(data.second);
 //	 std::cout << "id = " << data.first << ", hash = " << data.second << std::endl;
 }
@@ -125,21 +101,19 @@ ChunkProcessor::ChunkProcessor(
 		m_fileReader(std::move(fileReader)),
 		m_fileWriter(std::move(fileWriter)),
 		m_fileSize(size),
-		m_chunkSize(chunkSize)
-		{
-//			m_futureHashList.reserve(m_maxId);
-		}
+		m_chunkSize(chunkSize) {}
 
 void ChunkProcessor::run() {
+
 	m_producingDataFuture = std::async(std::launch::async, &ChunkProcessor::produceData, this);
-	m_consumingDataFuture = std::async(std::launch::async, &ChunkProcessor::consumeData, this);
+	m_consumingThread = std::thread(&ChunkProcessor::consumeData, this);
 	tryToStop();
 }
 
 void ChunkProcessor::tryToStop() {
 
 	m_producingDataFuture.get();
-	m_consumingDataFuture.get();
+	m_consumingThread.join();
 }
 
 ChunkProcessor::~ChunkProcessor() {
