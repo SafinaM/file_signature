@@ -20,15 +20,19 @@ The file should be optimized with multithreading
  - The utilite should correctly work for Linux, x86 and x64
 
 File is divided into equal parts. 
-The chunk is read by the Thread produceData;
+The chunk is reading by the Thread produceData;
 The hash function is calculating in Thread-pull tasks;
 Tht results of calculating are collecting in the Thread resumeData.
 
-# Possible improvments:
-To consider other hash funciton;
-To consider non-blocking thread-safe queue;
-To simplify code;
-To test with different implementaions;
+
+# Possible improvements:
+
+ - To consider other hash function;
+ - To consider non-blocking thread-safe queue;
+ - To simplify code;
+ - To test with different implementations;
+
+# Building
 
 To build without tests and BOOST:
 ```
@@ -41,7 +45,7 @@ cmake --build . --config Release -- -j 4
 ./file_signature <input.file> <output.file> <chunkSize in MB>
 ```
 
-To build without tests and with BOOST:
+To build without tests, with BOOST:
 ```
 git clone -b master --recursive git@github.com:SafinaM/file_signature.git 
 cd file_sinature
@@ -78,7 +82,7 @@ cd install/bin
 ./test # randomFile is provided in installation directory
 ```
 
-Debug outpue will be switched off:
+Debug output will be switched off:
 ```
 id = 0, hash = 4816188159313654
 id = 1, hash = 7375261180985723587
@@ -93,7 +97,7 @@ id = 8, hash = 8088573131653821677
 
 ```
 
-Test output
+Test output, debug output will be switched off
 ```
 FileReader test...
 FileReader::FileReader: file test.bin not found
@@ -116,6 +120,7 @@ id = 0, hash = 4392418993377932163
 
 Success!
 ```
+
 
 # Benchmarks
 
@@ -141,14 +146,14 @@ the second with chunkSize = 100 MB
 For chunkSize = 1MB, the multi-threaded implementation was 2.5 times faster than the single-threaded one.
 For chunkSize = 100MB multi-threaded implementation was 2.1 times faster than single-threaded.
 
-# Explanation of results:
+# Explanation of the results:
 
-It turns out that my previous tests were done with the mutex commented out. With this mutex, the benchmarks are exactly the same as for the single-threaded version of the application. This mutex was the main reason for the stucking of the whole process.
+It turns out that my previous benchmarks were done with the mutex commented out. With this mutex, the benchmarks are exactly the same as for the single-threaded version of the application. This mutex was the main reason for the stucking of the whole process.
 Was it fixed?
 Yes, it was... I hope. 
 First, in the corrected version, I used a thread-safe queue with the simplest mutex data protection and simplified code. The results got a little better. Compared to the single-threaded version, twice as good.
 
 Secondly...
-The main idea was to avoid blocking the thread producing the data. I was sure that a thread-safe, free-locking queue would greatly speed up the implementation. But I was wrong. I got very similar results. My tests correlate really well with Amdahl's law. The maximum results for my laptop with 4 cores are about 2-2.7 times. Actually, I tried different variants of BOOST's queue, but on average the results were the same (speed up 2-2.7 times).
+The main idea was to avoid of blocking the thread producing the data. I was sure that a thread-safe, free-locking queue would greatly speed up the implementation. But I was wrong. I got very similar results. My tests correlate really well with Amdahl's law. The maximum results for my laptop with 4 cores are about 2-2.7 times. Actually, I tried different variants of BOOST's queue, but on average the results were the same (speed up 2-2.7 times).
 
 Thanks.

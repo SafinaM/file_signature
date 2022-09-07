@@ -9,6 +9,6 @@ struct Data {
 
 };
 
-struct greater {
+struct Greater {
 	bool operator() (const Data& x, const Data& y) const { return x.id > y.id; }
 };

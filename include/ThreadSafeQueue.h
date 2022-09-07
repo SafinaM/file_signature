@@ -1,8 +1,8 @@
 template <typename T>
-class threadsafe_queue {
+class ThreadSafeQueue {
 public:
-	threadsafe_queue() = default;
-	threadsafe_queue(const threadsafe_queue& other) {
+	ThreadSafeQueue() = default;
+	ThreadSafeQueue(const ThreadSafeQueue& other) {
 		std::lock_guard<std::mutex> lk(other.mut);
 		m_queue = other.data_queue;
 	}

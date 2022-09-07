@@ -6,14 +6,14 @@
 #include <ThreadSafeQueue.h>
 
 #ifdef WITH_BOOST
-#include <boost/thread/thread.hpp>
-#include <boost/lockfree/queue.hpp>
+	#include <boost/thread/thread.hpp>
+	#include <boost/lockfree/queue.hpp>
 #endif
+
 #include <list>
 #include <memory>
 
 #pragma once
-
 
 struct ChunkProcessor {
 
@@ -32,7 +32,7 @@ struct ChunkProcessor {
 
 using priority_queue = std::priority_queue<
 		Data,
-		std::deque<Data>, greater>;
+		std::deque<Data>, Greater>;
 
 private:
 
@@ -41,7 +41,7 @@ private:
 	std::mutex m_mutex;
 	priority_queue m_prioritizedHashes;
 #ifndef WITH_BOOST
-	threadsafe_queue<Data> m_hashesInThreadSafeQueue;
+	ThreadSafeQueue<Data> m_hashesInThreadSafeQueue;
 #else
 	boost::lockfree::queue<Data, boost::lockfree::fixed_sized<false>> m_hashesInThreadSafeQueue;
 #endif
