@@ -1,7 +1,7 @@
 #include <Hasher.h>
 #include <memory>
 
-std::pair<uint64_t, uint64_t> Hasher::jenkinsOneAtATimeHash(std::shared_ptr<char[]> key, uint64_t length, uint64_t id) {
+Data Hasher::jenkinsOneAtATimeHash(std::shared_ptr<char[]> key, uint64_t length, uint64_t id) {
 
 	uint64_t hash = 0;
 	for (uint64_t i = 0; i < length; ++i) {
@@ -13,5 +13,5 @@ std::pair<uint64_t, uint64_t> Hasher::jenkinsOneAtATimeHash(std::shared_ptr<char
 	hash ^= hash >> 11;
 	hash += hash << 15;
 
-	return std::make_pair(id, hash);
+	return {id, hash};
 }

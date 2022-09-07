@@ -42,8 +42,10 @@ int main(int argc, char** argv) {
 
 	} catch (const std::exception& e) {
 		std::cerr << "Exception caught: " << e.what() << std::endl;
+		return -1;
 	} catch (...) {
 		std::cerr << "Unknown failure occurred. Possible memory corruption!" << std::endl;
+		return -1;
 	}
 
 	std::cout << "Success!" << std::endl;

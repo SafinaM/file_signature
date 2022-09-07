@@ -1,5 +1,6 @@
 #include <ArgParser.h>
 #include <ChunkProcessor.h>
+#include <Data.h>
 #include <FileReader.h>
 #include <FileWriter.h>
 #include <Hasher.h>
@@ -15,7 +16,6 @@
 #include <utility>
 #include <filesystem>
 
-using Data = std::pair<uint64_t, uint64_t>;
 
 uint32_t testFunc(unsigned int delay) {
 	std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -58,10 +58,10 @@ int main(int argc, char** argv) {
 	auto result2 = future2.get();
 	auto result3 = future3.get();
 	assert(result1 == 2);
-	assert(result2.first == 1);
-	assert(result3.first == 2);
-	assert(result2.second == 0);
-	assert(result3.second == 3455262669121713132); // calculate hash before
+	assert(result2.id == 1);
+	assert(result3.id == 2);
+	assert(result2.hash == 0);
+	assert(result3.hash == 3455262669121713132); // calculate hash before
 
 	std::cout << "ChunkProcessor test..." << std::endl;
 
