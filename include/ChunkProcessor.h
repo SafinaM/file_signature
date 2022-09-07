@@ -1,13 +1,19 @@
 #include <ArgParser.h>
+#include <Data.h>
 #include <FileReader.h>
 #include <FileWriter.h>
 #include <ThreadPool.h>
 #include <ThreadSafeQueue.h>
 
+#ifdef WITH_BOOST
+#include <boost/thread/thread.hpp>
+#include <boost/lockfree/queue.hpp>
+#endif
 #include <list>
 #include <memory>
 
 #pragma once
+
 
 struct ChunkProcessor {
 
@@ -24,13 +30,9 @@ struct ChunkProcessor {
 
 	~ChunkProcessor();
 
-// first - id, second - hash
-using Data = std::pair<uint64_t, uint64_t>;
-
 using priority_queue = std::priority_queue<
 		Data,
-		std::deque<Data>,
-		std::greater<Data>>;
+		std::deque<Data>, greater>;
 
 private:
 
@@ -38,8 +40,11 @@ private:
 
 	std::mutex m_mutex;
 	priority_queue m_prioritizedHashes;
-
+#ifndef WITH_BOOST
 	threadsafe_queue<Data> m_hashesInThreadSafeQueue;
+#else
+	boost::lockfree::queue<Data, boost::lockfree::fixed_sized<false>> m_hashesInThreadSafeQueue;
+#endif
 
 	ThreadPool m_threadPool;
 

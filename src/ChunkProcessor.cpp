@@ -1,6 +1,5 @@
 #include <ChunkProcessor.h>
 #include <Hasher.h>
-
 #include <iostream>
 
 // yes it could be in FileReader, but I also need file size for Hash calculating, that it why it here
@@ -57,15 +56,22 @@ void ChunkProcessor::consumeData() {
 
 			// take all processed hashes from thread safe queue
 			while (!m_hashesInThreadSafeQueue.empty()) {
-				auto elem = m_hashesInThreadSafeQueue.try_pop();
-				if (elem != nullptr)
-					m_prioritizedHashes.push(*elem);
+
+#ifndef WITH_BOOST
+				auto dataPtr = m_hashesInThreadSafeQueue.try_pop();
+					if (dataPtr != nullptr)
+						m_prioritizedHashes.push(*dataPtr);
+#else
+				Data data;
+				if (m_hashesInThreadSafeQueue.pop(data))
+					m_prioritizedHashes.push(data);
+#endif
 			}
 
 			// additional checking to keep an order, theoretically it is possible, especially in a case of big chunkSize ~ 100 MB
 			// note that id of a data chunk should be equal to number of already written chunks
 			// as a variant to use seekp, but now let's keep your hard disk alive
-			if (m_prioritizedHashes.empty() || m_prioritizedHashes.top().first != m_currentWritten) {
+			if (m_prioritizedHashes.empty() || m_prioritizedHashes.top().id != m_currentWritten) {
 				std::this_thread::yield;
 				continue;
 			}
@@ -87,7 +93,7 @@ void ChunkProcessor::consumeData() {
 
 void ChunkProcessor::writeHash(const Data& data) {
 
-	m_fileWriter->write(data.second);
+	m_fileWriter->write(data.hash);
 //	 std::cout << "id = " << data.first << ", hash = " << data.second << std::endl;
 }
 
@@ -101,7 +107,12 @@ ChunkProcessor::ChunkProcessor(
 		m_fileReader(std::move(fileReader)),
 		m_fileWriter(std::move(fileWriter)),
 		m_fileSize(size),
-		m_chunkSize(chunkSize) {}
+		m_chunkSize(chunkSize)
+
+#ifdef WITH_BOOST
+, m_hashesInThreadSafeQueue(32) // better to do some experiments, but for example  - ok
+#endif
+		{}
 
 void ChunkProcessor::run() {
 
