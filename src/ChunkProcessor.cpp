@@ -117,14 +117,13 @@ ChunkProcessor::ChunkProcessor(
 void ChunkProcessor::run() {
 
 	m_producingDataFuture = std::async(std::launch::async, &ChunkProcessor::produceData, this);
-	m_consumingThread = std::thread(&ChunkProcessor::consumeData, this);
+	consumeData();
 	tryToStop();
 }
 
 void ChunkProcessor::tryToStop() {
 
 	m_producingDataFuture.get();
-	m_consumingThread.join();
 }
 
 ChunkProcessor::~ChunkProcessor() {

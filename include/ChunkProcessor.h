@@ -52,7 +52,6 @@ private:
 	std::unique_ptr<FileWriter> m_fileWriter;
 
 	std::future<void> m_producingDataFuture;
-	std::thread m_consumingThread;
 
 	std::atomic<uint64_t> m_currentRead{0};
 	std::atomic<uint64_t> m_currentWritten{0};
