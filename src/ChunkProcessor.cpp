@@ -123,7 +123,8 @@ void ChunkProcessor::run() {
 
 void ChunkProcessor::tryToStop() {
 
-	m_producingDataFuture.get();
+	if (m_producingDataFuture.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
+		m_producingDataFuture.get();
 }
 
 ChunkProcessor::~ChunkProcessor() {
